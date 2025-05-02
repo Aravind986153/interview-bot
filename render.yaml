@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: 
+    runtime: python
+    buildCommand: |
+      pip install -r requirements.txt
+      python -c "from backend.app.database import create_db; create_db()"
+    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
+    envVars:
+      - key: DATABASE_URL
+        value: postgres://user:pass@host/db  # Auto-replaced by Render
+      - key: OPENAI_API_KEY
+        value: 
+      - key: ALLOWED_ORIGINS
+        value: 
+      - key: FRONTEND_URL
+        value: 

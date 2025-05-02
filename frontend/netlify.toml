@@ -1,0 +1,9 @@
+[build]
+  base = "frontend"
+  publish = "static"
+  command = "echo 'No build needed'"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
