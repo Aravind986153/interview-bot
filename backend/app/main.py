@@ -1,17 +1,14 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from backend.app.interview_logic import InterviewBot
-from backend.app.database import create_db
+from backend.app.database import create_db, save_session
 import logging
 import os
 from dotenv import load_dotenv
 import asyncio
 
 load_dotenv()
-
-# Initialize database
-create_db()
 
 # Configure logging
 logging.basicConfig(
@@ -22,6 +19,16 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+
+# Initialize database on startup
+@app.on_event("startup")
+def startup_event():
+    try:
+        from backend.app.database import create_db
+        create_db()
+        logger.info("PostgreSQL database initialized")
+    except Exception as e:
+        logger.error(f"Database init failed: {e}")
 
 # CORS middleware
 app.add_middleware(

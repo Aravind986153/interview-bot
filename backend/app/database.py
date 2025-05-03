@@ -1,13 +1,24 @@
 from sqlmodel import SQLModel, Field, create_engine, Session
 from datetime import datetime
 import logging
-from pathlib import Path
+import os
 
 logger = logging.getLogger(__name__)
 
-# Database path
-project_root = Path(__file__).resolve().parent.parent.parent
-DB_PATH = project_root / "data" / "sessions.db"
+# PostgreSQL configuration
+def get_database_url():
+    # Get from environment (Render provides this)
+    url = os.getenv("DATABASE_URL")
+    if not url:
+        raise ValueError("DATABASE_URL environment variable not set")
+    
+    # Fix for Render's connection string
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql://", 1)
+    return url
+
+# Create engine
+engine = create_engine(get_database_url())
 
 class InterviewSession(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
@@ -15,8 +26,6 @@ class InterviewSession(SQLModel, table=True):
     topic: str
     score: int
     created_at: datetime = Field(default_factory=datetime.now)
-
-engine = create_engine(f"sqlite:///{DB_PATH}")
 
 def save_session(ip: str, topic: str, score: int):
     try:
