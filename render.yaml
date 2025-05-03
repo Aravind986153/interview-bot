@@ -5,18 +5,7 @@ services:
     buildCommand: |
       pip install -r backend/app/requirements.txt
     startCommand: |
-      python backend/app/main.py
+      uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --ws websockets --ws-ping-interval 20
     envVars:
       - key: PYTHONPATH
-        value: /opt/render/project/src/backend/app
-      - key: DATABASE_URL
-        fromDatabase:
-          name: interview-db
-          property: connectionString
-      - key: ALLOWED_ORIGINS
-        value: "*"
-      - key: FRONTEND_URL
-        value: "https://interview-cbot.netlify.app"
-
-databases:
-  - name: interview-db
+        value: /opt/render/project/src
