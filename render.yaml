@@ -7,16 +7,5 @@ services:
     startCommand: |
       python backend/app/main.py
     envVars:
-      - key: PYTHONPATH
-        value: /opt/render/project/src/backend/app
-      - key: DATABASE_URL
-        fromDatabase:
-          name: interview-db
-          property: connectionString
       - key: ALLOWED_ORIGINS
-        value: "*"
-      - key: FRONTEND_URL
-        value: "https://interview-cbot.netlify.app"
-
-databases:
-  - name: interview-db
+        value: "https://"

@@ -2,7 +2,7 @@ class InterviewApp {
     constructor() {
         this.initParticles();
         
-        this.ws = null;
+        this.ws = new WebSocket(WS_URL);
         this.currentTopic = null;
         this.currentQuestionIndex = 0;
         this.totalQuestions = 0;
