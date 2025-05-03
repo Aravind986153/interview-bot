@@ -65,7 +65,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @app.get("/")
 async def root():
-    return RedirectResponse(url=os.getenv("FRONTEND_URL", "https://your-netlify-site.netlify.app"))
+    return RedirectResponse(url=os.getenv("FRONTEND_URL", "https://interview-cbot.netlify.app"))
 
 if __name__ == "__main__":
     import uvicorn
