@@ -1,8 +1,8 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
-from .interview_logic import InterviewBot
-from .database import create_db, save_session
+from interview_logic import InterviewBot
+from database import create_db
 import logging
 import os
 from dotenv import load_dotenv
