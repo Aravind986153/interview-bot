@@ -576,5 +576,5 @@ window.addEventListener('resize', () => {
 // Initialize application
 document.addEventListener('DOMContentLoaded', () => new InterviewApp());
 
-const API_URL = "https://interview-bot-backend.onrender.com";
+const API_URL = "https://interview-backend.onrender.com";
 const WS_URL = "wss://interview-bot-backend.onrender.com/ws";
