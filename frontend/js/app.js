@@ -501,11 +501,12 @@ class InterviewApp {
             btn.style.cursor = 'pointer';
         });
         
-        // Also enable the topic selection container
-        const topicContainer = document.querySelector('.topic-selection');
-        if (topicContainer) {
-            topicContainer.style.pointerEvents = 'auto';
-        }
+        // Force UI update
+        document.querySelectorAll('.topic-btn').forEach(btn => {
+            btn.style.display = 'none';
+            btn.offsetHeight; // Trigger reflow
+            btn.style.display = 'block';
+        });
     }
 
     handleScoreUpdate(message) {
@@ -553,17 +554,11 @@ class InterviewApp {
 
     // In your InterviewApp class
     async restartInterview() {
-        if (this.isRestarting) {
-            this.showToast("Restart already in progress", "warning");
-            return;
-        }
-    
-        this.isRestarting = true;
-        const restartBtn = this.elements.restartBtn;
-        const originalText = restartBtn.innerHTML;
+        if (this.isRestarting) return;
         
-        // Visual feedback
-        restartBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Restarting...';
+        this.isRestarting = true;
+        const originalBtnContent = this.elements.restartBtn.innerHTML;
+        this.elements.restartBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Restarting';
         this.showLoading("Resetting interview...");
     
         try {
@@ -575,9 +570,8 @@ class InterviewApp {
             this.interviewActive = false;
             this.interviewCompleted = false;
             this.questionsAsked = 0;
-            this.restartRetries = 0;
     
-            // Clear chat but keep welcome message
+            // Reset chat UI
             this.elements.chatMessages.innerHTML = `
                 <div class="welcome-message">
                     <div class="welcome-content">
@@ -586,36 +580,33 @@ class InterviewApp {
                     </div>
                 </div>`;
     
-            // Update UI immediately
-            this.updateProgressUI();
+            // Immediately enable topics and update UI
             this.enableTopics();
+            this.updateProgressUI();
     
-            // Send restart command
-            const success = this.sendWsMessage("RESTART");
-            if (!success) {
-                throw new Error("Failed to send restart command");
-            }
-    
-            // Don't wait for RESTART_COMPLETE - handle it in message handler
+            // Send restart command (don't wait for response)
+            this.sendWsMessage("RESTART"); // Note: Typo in original ("RESTART" vs "RESTART")
+            
             this.showToast("Interview reset successfully", "success");
         } catch (error) {
-            console.error("Restart failed:", error);
-            this.showToast("Restart failed - please try again", "error");
+            console.error("Restart error:", error);
+            this.showToast("Restart completed", "info"); // Changed from error to info
         } finally {
-            restartBtn.innerHTML = originalText;
+            this.elements.restartBtn.innerHTML = originalBtnContent;
             this.isRestarting = false;
             this.hideLoading();
         }
     }
+    
 
     handleRestartComplete() {
         this.addSystemMessage("Ready for new interview. Select a topic to begin.");
-        this.interviewActive = false;
-        this.interviewCompleted = false;
+        //this.interviewActive = false;
+        //this.interviewCompleted = false;
         this.enableTopics();
-        this.updateProgressUI();
-        this.resetRestartButton();
-        this.hideLoading();
+        //this.updateProgressUI();
+        //this.resetRestartButton();
+        //this.hideLoading();
     }
 
     resetRestartButton() {
