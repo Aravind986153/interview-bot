@@ -24,7 +24,6 @@ app = FastAPI()
 @app.on_event("startup")
 def startup_event():
     try:
-        from .database import create_db
         create_db()
         logger.info("PostgreSQL database initialized")
     except Exception as e:
