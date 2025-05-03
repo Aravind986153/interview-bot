@@ -497,12 +497,15 @@ class InterviewApp {
             btn.disabled = false;
             btn.classList.remove('disabled');
             btn.style.opacity = '1';
-            btn.style.cursor = 'pointer';
             btn.style.pointerEvents = 'auto';
+            btn.style.cursor = 'pointer';
         });
         
-        // Ensure the topic selection section is fully interactive
-        document.querySelector('.topic-selection').style.pointerEvents = 'auto';
+        // Also enable the topic selection container
+        const topicContainer = document.querySelector('.topic-selection');
+        if (topicContainer) {
+            topicContainer.style.pointerEvents = 'auto';
+        }
     }
 
     handleScoreUpdate(message) {
@@ -529,12 +532,12 @@ class InterviewApp {
 
     updateProgressUI() {
         let progress = 0;
-        if (this.totalQuestions > 0) {
-            progress = Math.min(
-                (this.currentQuestionIndex / this.totalQuestions) * 100, 
-                100
-            );
-        }
+    if (this.totalQuestions > 0 && this.currentQuestionIndex > 0) {
+        progress = Math.min(
+            (this.currentQuestionIndex / this.totalQuestions) * 100, 
+            100
+        );
+    }
         this.elements.progressFill.style.width = `${progress}%`;
         this.elements.progressPercent.textContent = `${Math.round(progress)}%`;
         this.elements.scoreDisplay.textContent = `${this.score}/${this.totalQuestions}`;
@@ -564,6 +567,16 @@ class InterviewApp {
         this.showLoading("Resetting interview...");
     
         try {
+            // Clear all interview states
+            this.currentTopic = null;
+            this.currentQuestionIndex = 0;
+            this.score = 0;
+            this.totalQuestions = 0;
+            this.interviewActive = false;
+            this.interviewCompleted = false;
+            this.questionsAsked = 0;
+            this.restartRetries = 0;
+    
             // Clear chat but keep welcome message
             this.elements.chatMessages.innerHTML = `
                 <div class="welcome-message">
@@ -573,33 +586,21 @@ class InterviewApp {
                     </div>
                 </div>`;
     
-            // Reset all interview states
-            this.currentTopic = null;
-            this.currentQuestionIndex = 0;
-            this.score = 0;
-            this.totalQuestions = 0;
-            this.interviewActive = false;
-            this.interviewCompleted = false;
-            this.questionsAsked = 0;
-    
-            // Update UI to reflect reset state
+            // Update UI immediately
             this.updateProgressUI();
             this.enableTopics();
     
-            // Send restart command to backend
+            // Send restart command
             const success = this.sendWsMessage("RESTART");
             if (!success) {
                 throw new Error("Failed to send restart command");
             }
     
+            // Don't wait for RESTART_COMPLETE - handle it in message handler
             this.showToast("Interview reset successfully", "success");
         } catch (error) {
             console.error("Restart failed:", error);
             this.showToast("Restart failed - please try again", "error");
-            // Attempt to reconnect if needed
-            if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-                this.connectWebSocket();
-            }
         } finally {
             restartBtn.innerHTML = originalText;
             this.isRestarting = false;
@@ -608,12 +609,12 @@ class InterviewApp {
     }
 
     handleRestartComplete() {
-        this.addSystemMessage("Ready for new interview");
+        this.addSystemMessage("Ready for new interview. Select a topic to begin.");
         this.interviewActive = false;
         this.interviewCompleted = false;
         this.enableTopics();
-        this.resetRestartButton();
         this.updateProgressUI();
+        this.resetRestartButton();
         this.hideLoading();
     }
 
