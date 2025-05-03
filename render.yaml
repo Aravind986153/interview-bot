@@ -5,7 +5,7 @@ services:
     buildCommand: |
       pip install -r backend/app/requirements.txt
     startCommand: |
-      export PYTHONPATH=/opt/render/project/src/backend/app && python backend/app/main.py
+      python backend/app/main.py
     envVars:
       - key: PYTHONPATH
         value: /opt/render/project/src/backend/app
@@ -14,9 +14,9 @@ services:
           name: interview-db
           property: connectionString
       - key: ALLOWED_ORIGINS
-        value: https://interview-cbot.netlify.app
+        value: "*"
       - key: FRONTEND_URL
-        value: https://interview-cbot.netlify.app
+        value: "https://interview-cbot.netlify.app"
 
 databases:
   - name: interview-db
