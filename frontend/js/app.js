@@ -577,4 +577,6 @@ window.addEventListener('resize', () => {
 document.addEventListener('DOMContentLoaded', () => new InterviewApp());
 
 const API_URL = "https://interview-backend-6zq9.onrender.com";
-const WS_URL = "wss://interview-backend-6zq9.onrender.com/ws";
+const WS_URL = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") 
+    ? "ws://localhost:8000/ws" 
+    : "wss://interview-backend-6zq9.onrender.com/ws";

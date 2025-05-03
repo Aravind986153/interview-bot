@@ -30,7 +30,11 @@ app = FastAPI()
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",  # For local dev
+        "https://interview-cbot.netlify.app",  # Your production frontend
+        "https://interview-backend-6zq9.onrender.com"  # Render's own domain
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -62,6 +66,15 @@ async def root():
 # WebSocket endpoint
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    allowed_origins = [
+        "https://interview-cbot.netlify.app",
+        "http://localhost:3000"  # Adjust if your local port differs
+    ]
+    
+    origin = websocket.headers.get("origin")
+    if origin not in allowed_origins:
+        await websocket.close(code=1008)
+        return
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         await websocket.close(code=1008, reason="Server missing API configuration")
