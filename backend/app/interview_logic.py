@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from pathlib import Path
 import logging
 import httpx
-from backend.app.database import save_session
+from database import save_session
 
 logger = logging.getLogger(__name__)
 
