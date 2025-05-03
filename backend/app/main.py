@@ -7,7 +7,7 @@ app = FastAPI()
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://"],
+    allow_origins=["https://interview-cbot.netlify.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -25,7 +25,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @app.get("/")
 async def health_check():
-    return {"status": "ready", "ws_endpoint": "wss:///ws"}
+    return {"status": "ready", "ws_endpoint": "wss://interview-backend-6zq9.onrender.com/ws"}
 
 if __name__ == "__main__":
     import uvicorn

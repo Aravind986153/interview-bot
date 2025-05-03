@@ -3,22 +3,9 @@ services:
     name: interview-backend
     runtime: python
     buildCommand: |
-      pip install -r requirements.txt
+      pip install -r backend/app/requirements.txt
     startCommand: |
-      uvicorn main:app --host 0.0.0.0 --port 8000 --ws-ping-interval 60 --ws-ping-timeout 60
+      python backend/app/main.py
     envVars:
-      - key: DATABASE_URL
-        fromDatabase: postgresql://interviewuser:NGPa9l4AVqVtjGrpFfYI7ghVagL71hRg@dpg-d0apg9h5pdvs73c121jg-a/interviewdb_81hl
-          name: interview-db
-          property: connectionString
       - key: ALLOWED_ORIGINS
-        value: https://interview-cbot.netlify.app
-      - key: FRONTEND_URL
-        value: https://interview-cbot.netlify.app
-      - key: PYTHONPATH
-        value: /opt/render/project/src
-
-databases:
-  - name: interview-db
-    databaseName: interviewdb_81hl
-    user: interviewuser
+        value: "https://interview-cbot.netlify.app"
