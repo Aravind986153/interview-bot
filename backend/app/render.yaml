@@ -3,9 +3,9 @@ services:
     name: interview-backend
     runtime: python
     buildCommand: |
-      pip install -r backend/app/requirements.txt
+      pip install -r requirements.txt
     startCommand: |
-      python backend/app/main.py
+      uvicorn main:app --host 0.0.0.0 --port 8000
     envVars:
       - key: ALLOWED_ORIGINS
         value: "https://interview-cbot.netlify.app"
