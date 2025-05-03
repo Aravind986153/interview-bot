@@ -25,6 +25,9 @@ class InterviewApp {
         this.initContactModal();
         this.initEventListeners();
         this.initAutoResize();
+
+        this.restartRetries = 0;
+        this.maxRestartRetries = 3;
         
         setTimeout(() => {
             this.showLoading("Connecting to server...");
@@ -337,7 +340,6 @@ class InterviewApp {
 
     handleWsMessage(data) {
         if (data === "RESTART_COMPLETE") {
-            this.handleRestartComplete();
             return;
         }
 
@@ -416,11 +418,20 @@ class InterviewApp {
     }
 
     sendWsMessage(message) {
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+            console.error("Cannot send message - WebSocket not open");
+            this.showToast("Connection lost - reconnecting...", "warning");
+            this.connectWebSocket();
+            return false;
+        }
+        
+        try {
             this.ws.send(message);
-        } else {
-            console.error("WebSocket not connected");
-            this.showToast("Connection error. Please try again.", "error");
+            return true;
+        } catch (error) {
+            console.error("Error sending message:", error);
+            this.showToast("Message failed to send", "error");
+            return false;
         }
     }
 
@@ -532,35 +543,84 @@ class InterviewApp {
         this.elements.feedbackBtn.style.opacity = this.interviewCompleted ? '1' : '0.6';
     }
 
-    restartInterview() {
-        this.isRestarting = true;
-        const restartBtn = this.elements.restartBtn;
-        
-        const originalHTML = restartBtn.innerHTML;
-        restartBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Restarting...';
-        restartBtn.disabled = true;
+    // In your InterviewApp class
+    async restartInterview() {
+    if (this.isRestarting) {
+        this.showToast("Restart already in progress", "warning");
+        return;
+    }
 
-        this.resetInterviewState();
+    this.isRestarting = true;
+    const restartBtn = this.elements.restartBtn;
+    const originalText = restartBtn.textContent;
+    
+    // Visual feedback
+    restartBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Restarting...';
+    this.showLoading("Resetting interview...");
+
+    try {
+        // Clear local state
+        this.currentTopic = null;
+        this.currentQuestionIndex = 0;
+        this.score = 0;
         this.interviewActive = false;
         this.interviewCompleted = false;
+        
+        // Send restart command and wait for confirmation
+        const restartConfirmed = await new Promise((resolve) => {
+            const timeout = setTimeout(() => {
+                this.showToast("Restart taking longer than expected", "warning");
+                resolve(false);
+            }, 5000); // 5 second timeout
+            
+            // Temporary message handler
+            const tempHandler = (e) => {
+                if (e.data === "RESTART_COMPLETE") {
+                    this.ws.removeEventListener('message', tempHandler);
+                    clearTimeout(timeout);
+                    resolve(true);
+                }
+            };
+            
+            this.ws.addEventListener('message', tempHandler);
+            this.ws.send("RESTART");
+        });
+
+        if (!restartConfirmed) {
+            throw new Error("Restart confirmation not received");
+        }
+
+        // Reset UI
         this.elements.chatMessages.innerHTML = `
             <div class="welcome-message">
                 <div class="welcome-content">
-                    <h2>Welcome to AI Interview Coach!</h2>
-                    <p>Select a topic below to begin your mock interview.</p>
+                    <h2>Interview Reset</h2>
+                    <p>Select a topic below to begin a new interview.</p>
                 </div>
             </div>`;
-
-        this.sendWsMessage('RESTART');
-        this.showLoading("Resetting interview session...");
-
-        setTimeout(() => {
-            if (this.isRestarting) {
-                this.resetRestartButton();
-                this.showToast("Restart completed", "success");
-            }
-        }, 5000);
+        
+        this.enableTopics();
+        this.updateProgressUI();
+        this.showToast("Interview reset successfully", "success");
+        
+    } catch (error) {
+        console.error("Restart failed:", error);
+        this.showToast("Restart failed - please refresh", "error");
+    } finally {
+        this.resetRestartButton();
+        this.hideLoading();
     }
+
+    if (!restartConfirmed) {
+        this.restartRetries++;
+        if (this.restartRetries < this.maxRestartRetries) {
+            this.showToast(`Retrying restart (${this.restartRetries}/${this.maxRestartRetries})`, "warning");
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            return this.restartInterview();
+        }
+        throw new Error("Max retries reached");
+    }
+}
 
     handleRestartComplete() {
         this.addSystemMessage("Ready for new interview");
@@ -571,10 +631,10 @@ class InterviewApp {
     }
 
     resetRestartButton() {
-        this.isRestarting = false;
         const restartBtn = this.elements.restartBtn;
         restartBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Restart Interview';
         restartBtn.disabled = false;
+        this.isRestarting = false;
     }
 
     showToast(message, type = 'info') {
