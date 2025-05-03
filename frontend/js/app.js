@@ -347,14 +347,18 @@ class InterviewApp {
             return;
         }
 
-        if (data.includes("Feedback") || data.includes("Strengths:") || 
-        data.includes("Improvement:") || data.startsWith("1.")) {
+        if (data.toLowerCase().includes("feedback") || 
+        data.includes("Strengths:") || 
+        data.includes("Improvement:") ||
+        data.startsWith("1.")) {
+        clearTimeout(this.feedbackTimeout);
         this.addFeedbackMessage(data);
         this.hideLoading();
         return;
     }
 
-    if (data.includes("Could not generate feedback")) {
+    if (data.includes("Error:") || data.includes("Could not generate")) {
+        clearTimeout(this.feedbackTimeout);
         this.showToast(data, "error");
         this.hideLoading();
         return;
@@ -403,28 +407,42 @@ class InterviewApp {
     handleFeedback() {
         // Enhanced validation
         if (!this.interviewCompleted) {
-            this.showToast("Please complete an interview first", "warning");
+            this.showToast("Please complete an interview before requesting feedback", "warning");
             return;
         }
-        
+    
         if (!this.currentTopic) {
-            this.showToast("No interview topic found", "error");
+            this.showToast("No interview topic found for feedback", "error");
             return;
         }
     
+        // Connection check with reconnect
         if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-            this.showToast("Connection lost - reconnecting...", "warning");
+            this.showToast("Reconnecting to server...", "info");
             this.connectWebSocket();
+            setTimeout(() => {
+                if (this.ws?.readyState === WebSocket.OPEN) {
+                    this.handleFeedback();
+                } else {
+                    this.showToast("Connection failed. Please try again", "error");
+                }
+            }, 1000);
             return;
         }
     
-        console.log("Sending feedback request..."); // Debug log
-        this.showLoading("Generating detailed feedback...");
+        console.debug("Sending feedback request...");
+        this.showLoading("Generating your feedback...");
         
         try {
+            // Add timeout for feedback response
+            this.feedbackTimeout = setTimeout(() => {
+                this.showToast("Feedback is taking longer than expected", "info");
+            }, 5000);
+    
             this.ws.send("feedback");
         } catch (error) {
-            console.error("Feedback send error:", error);
+            console.error("Failed to send feedback request:", error);
+            clearTimeout(this.feedbackTimeout);
             this.showToast("Failed to send feedback request", "error");
             this.hideLoading();
         }

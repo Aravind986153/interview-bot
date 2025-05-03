@@ -165,63 +165,76 @@ class InterviewBot:
 
     async def _handle_feedback_request(self) -> str:
         """Generate feedback for completed interview"""
-        if not self.completed:
-            return "Please complete the interview before requesting feedback."
-        
-        if not self.topic:
-            return "No interview topic available for feedback."
-        
-        if not self.answers or len(self.answers) == 0:
-            return "No interview answers available for feedback."
-
         try:
-            print(f"Generating feedback for {len(self.answers)} answers...")  # Debug log
+            if not self.completed:
+                return "Error: Please complete the interview before requesting feedback."
+            
+            if not self.topic:
+                return "Error: No interview topic available for feedback."
+            
+            if not self.answers or len(self.answers) == 0:
+                return "Error: No interview answers available for feedback."
+
+        # Validate OpenAI connection
+            try:
+                test_response = await self.client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[{"role": "user", "content": "Test connection"}],
+                    max_tokens=5
+                )
+                if not test_response.choices:
+                    return "Error: OpenAI API returned empty response"
+            except Exception as test_error:
+                return f"Error: OpenAI connection failed - {str(test_error)}"
+
+        # Generate actual feedback
             feedback = await self._generate_ai_feedback()
             if not feedback:
-                return "Could not generate feedback (empty response)"
+                return "Error: Received empty feedback response"
+            
             return feedback
+        
         except Exception as e:
-            print(f"Feedback generation error: {str(e)}")  # Debug log
-        return f"Could not generate feedback: {str(e)}"
+            logger.exception("Feedback generation failed")
+        return f"Error: {str(e)}"
 
     async def _generate_ai_feedback(self) -> str:
         """Generate feedback using OpenAI API"""
         try:
-            prompt = f"""Generate detailed interview feedback for a {self.topic} interview.
+            prompt = f"""**Interview Feedback Request**
         
-            Candidate Score: {self.score}/{len(self.questions[self.topic])*3}
+        Topic: {self.topic}
+        Score: {self.score}/{len(self.questions[self.topic])*3}
 
-            Questions and Answers:
-            """
+        Questions and Answers:
+        """
             for i, (question, answer) in enumerate(self.answers):
-                prompt += f"\nQuestion {i+1}: {question}\nAnswer: {answer}\n"
+                prompt += f"\nQ{i+1}: {question}\nA: {answer}\n"
 
-                prompt += """
-                Provide comprehensive feedback with these sections:
-                1. Overall Performance Assessment
-                2. Key Strengths Demonstrated
-                3. Areas for Improvement
-                4. Detailed Question-by-Question Feedback
-                5. Final Recommendations"""
+            prompt += """
+        Please provide comprehensive feedback with these sections:
+        1. **Overall Assessment**
+        2. **Key Strengths**
+        3. **Areas for Improvement** 
+        4. **Question-by-Question Analysis**
+        5. **Recommendations for Future Preparation**
 
-                print("Sending prompt to OpenAI...")  # Debug log
-                response = await self.client.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[{
-                        "role": "user",
-                        "content": prompt
-                    }],
-                    temperature=0.7,
-                    max_tokens=1500
-                )
+        Format the response with clear headings and bullet points."""
+
+            response = await self.client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.7,
+                max_tokens=1500
+            )
         
             if not response.choices:
-                raise ValueError("Empty response from OpenAI")
+                raise ValueError("Empty response from OpenAI API")
             
             return response.choices[0].message.content
         
         except Exception as e:
-            print(f"OpenAI API error: {str(e)}")  # Debug log
+            logger.error(f"OpenAI API error: {str(e)}")
         raise
 
     def _reset_state(self):
