@@ -344,10 +344,13 @@ class InterviewApp {
             return;
         }
 
-        if (data.startsWith("**Feedback**") || data.includes("Strengths:") || data.includes("Areas for Improvement:")) {
-            this.addFeedbackMessage(data);
-            return;
-        }
+        if (data.includes("**Feedback**") || 
+        data.includes("Strengths:") || 
+        data.includes("Areas for Improvement:") ||
+        data.startsWith("1. Overall Performance")) {
+        this.addFeedbackMessage(data);
+        return;
+    }
 
         if (data.startsWith("Error:") || data.startsWith("Could not generate feedback")) {
             this.showToast(data, "error");
@@ -390,13 +393,24 @@ class InterviewApp {
     }
 
     handleFeedback() {
-        if (!this.interviewCompleted) {
+        // Add more comprehensive checks
+        if (!this.interviewCompleted || !this.currentTopic) {
             this.showToast("Please complete an interview first", "warning");
             return;
         }
-
+        
+        // Verify WebSocket connection
+        if (!this.checkConnection()) {
+            this.showToast("Connection error - cannot send feedback request", "error");
+            return;
+        }
+    
         this.showLoading("Generating feedback...");
-        this.sendWsMessage("feedback");
+        const success = this.sendWsMessage("feedback");
+        if (!success) {
+            this.showToast("Failed to send feedback request", "error");
+            this.hideLoading();
+        }
     }
 
     updateQuestionDisplay() {
@@ -493,19 +507,23 @@ class InterviewApp {
     }
 
     enableTopics() {
+        // First reset all button states
         this.elements.topicButtons.forEach(btn => {
             btn.disabled = false;
             btn.classList.remove('disabled');
-            btn.style.opacity = '1';
-            btn.style.pointerEvents = 'auto';
-            btn.style.cursor = 'pointer';
+            
+            // Reset all inline styles we previously modified
+            btn.style.opacity = '';
+            btn.style.pointerEvents = '';
+            btn.style.cursor = '';
+            btn.style.display = ''; // Remove any display modifications
         });
         
-        // Force UI update
-        document.querySelectorAll('.topic-btn').forEach(btn => {
-            btn.style.display = 'none';
-            btn.offsetHeight; // Trigger reflow
-            btn.style.display = 'block';
+        // For modern browsers - trigger re-layout without flash
+        requestAnimationFrame(() => {
+            this.elements.topicButtons.forEach(btn => {
+                btn.style.transform = 'translateZ(0)'; // Gentle GPU acceleration
+            });
         });
     }
 
@@ -521,7 +539,10 @@ class InterviewApp {
 
     handleInterviewComplete(message) {
         this.addBotMessage(message);
+        this.interviewActive = false;
+        this.interviewCompleted = true;  // Explicitly set this
         this.enableTopics();
+        this.updateProgressUI();
     }
 
     resetInterviewState() {
@@ -552,6 +573,15 @@ class InterviewApp {
         this.elements.feedbackBtn.style.opacity = this.interviewCompleted ? '1' : '0.6';
     }
 
+    checkConnection() {
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+            this.showToast("Connecting to server...", "warning");
+            this.connectWebSocket();
+            return false;
+        }
+        return true;
+    }
+
     // In your InterviewApp class
     async restartInterview() {
         if (this.isRestarting) return;
@@ -562,7 +592,7 @@ class InterviewApp {
         this.showLoading("Resetting interview...");
     
         try {
-            // Clear all interview states
+            // Reset all states
             this.currentTopic = null;
             this.currentQuestionIndex = 0;
             this.score = 0;
@@ -580,17 +610,17 @@ class InterviewApp {
                     </div>
                 </div>`;
     
-            // Immediately enable topics and update UI
+            // Enable topics BEFORE updating progress
             this.enableTopics();
             this.updateProgressUI();
     
-            // Send restart command (don't wait for response)
-            this.sendWsMessage("RESTART"); // Note: Typo in original ("RESTART" vs "RESTART")
+            // Send restart command
+            this.sendWsMessage("RESTART");
             
             this.showToast("Interview reset successfully", "success");
         } catch (error) {
             console.error("Restart error:", error);
-            this.showToast("Restart completed", "info"); // Changed from error to info
+            this.showToast("Restart completed", "info");
         } finally {
             this.elements.restartBtn.innerHTML = originalBtnContent;
             this.isRestarting = false;

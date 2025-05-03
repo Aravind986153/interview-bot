@@ -185,10 +185,10 @@ class InterviewBot:
             f"The candidate scored {self.score} out of {len(self.questions[self.topic])*3}. "
             "Here are the questions and answers:\n\n"
         )
-        
+    
         for i, (question, answer) in enumerate(self.answers):
             prompt += f"Question {i+1}: {question}\nAnswer: {answer}\n\n"
-            
+        
         prompt += (
             "Provide comprehensive feedback including:\n"
             "1. Overall performance assessment\n"
@@ -197,14 +197,14 @@ class InterviewBot:
             "4. Specific suggestions for each question\n"
             "Format the response clearly with headings."
         )
-        
+    
         response = await self.client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
             max_tokens=1000
         )
-        
+    
         return response.choices[0].message.content
 
     def _reset_state(self):
