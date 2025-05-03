@@ -3,9 +3,10 @@ services:
     name: interview-backend
     runtime: python
     buildCommand: |
-      pip install -r requirements.txt
+      pip install -e backend/
+      pip install -r backend/app/requirements.txt
     startCommand: |
-      python run.py
+      python backend/app/main.py
     envVars:
       - key: DATABASE_URL
         fromDatabase: postgresql://interviewuser:NGPa9l4AVqVtjGrpFfYI7ghVagL71hRg@dpg-d0apg9h5pdvs73c121jg-a/interviewdb_81hl
