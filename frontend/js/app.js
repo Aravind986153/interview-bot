@@ -339,16 +339,24 @@ class InterviewApp {
     }
 
     handleWsMessage(data) {
+
+        console.log("Received:", data);
+
         if (data === "RESTART_COMPLETE") {
             this.handleRestartComplete();
             return;
         }
 
-        if (data.includes("**Feedback**") || 
-        data.includes("Strengths:") || 
-        data.includes("Areas for Improvement:") ||
-        data.startsWith("1. Overall Performance")) {
+        if (data.includes("Feedback") || data.includes("Strengths:") || 
+        data.includes("Improvement:") || data.startsWith("1.")) {
         this.addFeedbackMessage(data);
+        this.hideLoading();
+        return;
+    }
+
+    if (data.includes("Could not generate feedback")) {
+        this.showToast(data, "error");
+        this.hideLoading();
         return;
     }
 
@@ -393,21 +401,30 @@ class InterviewApp {
     }
 
     handleFeedback() {
-        // Add more comprehensive checks
-        if (!this.interviewCompleted || !this.currentTopic) {
+        // Enhanced validation
+        if (!this.interviewCompleted) {
             this.showToast("Please complete an interview first", "warning");
             return;
         }
         
-        // Verify WebSocket connection
-        if (!this.checkConnection()) {
-            this.showToast("Connection error - cannot send feedback request", "error");
+        if (!this.currentTopic) {
+            this.showToast("No interview topic found", "error");
             return;
         }
     
-        this.showLoading("Generating feedback...");
-        const success = this.sendWsMessage("feedback");
-        if (!success) {
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+            this.showToast("Connection lost - reconnecting...", "warning");
+            this.connectWebSocket();
+            return;
+        }
+    
+        console.log("Sending feedback request..."); // Debug log
+        this.showLoading("Generating detailed feedback...");
+        
+        try {
+            this.ws.send("feedback");
+        } catch (error) {
+            console.error("Feedback send error:", error);
             this.showToast("Failed to send feedback request", "error");
             this.hideLoading();
         }

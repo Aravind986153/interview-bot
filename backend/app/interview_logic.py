@@ -167,45 +167,62 @@ class InterviewBot:
         """Generate feedback for completed interview"""
         if not self.completed:
             return "Please complete the interview before requesting feedback."
-            
-        if not self.topic or not self.answers:
-            return "No interview data available for feedback."
-            
+        
+        if not self.topic:
+            return "No interview topic available for feedback."
+        
+        if not self.answers or len(self.answers) == 0:
+            return "No interview answers available for feedback."
+
         try:
+            print(f"Generating feedback for {len(self.answers)} answers...")  # Debug log
             feedback = await self._generate_ai_feedback()
+            if not feedback:
+                return "Could not generate feedback (empty response)"
             return feedback
         except Exception as e:
-            logger.error(f"Error generating feedback: {str(e)}")
-            return "Could not generate feedback. Please try again later."
+            print(f"Feedback generation error: {str(e)}")  # Debug log
+        return f"Could not generate feedback: {str(e)}"
 
     async def _generate_ai_feedback(self) -> str:
         """Generate feedback using OpenAI API"""
-        prompt = (
-            f"Generate interview feedback for a {self.topic} interview. "
-            f"The candidate scored {self.score} out of {len(self.questions[self.topic])*3}. "
-            "Here are the questions and answers:\n\n"
-        )
-    
-        for i, (question, answer) in enumerate(self.answers):
-            prompt += f"Question {i+1}: {question}\nAnswer: {answer}\n\n"
+        try:
+            prompt = f"""Generate detailed interview feedback for a {self.topic} interview.
         
-        prompt += (
-            "Provide comprehensive feedback including:\n"
-            "1. Overall performance assessment\n"
-            "2. Strengths demonstrated\n"
-            "3. Areas for improvement\n"
-            "4. Specific suggestions for each question\n"
-            "Format the response clearly with headings."
-        )
-    
-        response = await self.client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.7,
-            max_tokens=1000
-        )
-    
-        return response.choices[0].message.content
+            Candidate Score: {self.score}/{len(self.questions[self.topic])*3}
+
+            Questions and Answers:
+            """
+            for i, (question, answer) in enumerate(self.answers):
+                prompt += f"\nQuestion {i+1}: {question}\nAnswer: {answer}\n"
+
+                prompt += """
+                Provide comprehensive feedback with these sections:
+                1. Overall Performance Assessment
+                2. Key Strengths Demonstrated
+                3. Areas for Improvement
+                4. Detailed Question-by-Question Feedback
+                5. Final Recommendations"""
+
+                print("Sending prompt to OpenAI...")  # Debug log
+                response = await self.client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[{
+                        "role": "user",
+                        "content": prompt
+                    }],
+                    temperature=0.7,
+                    max_tokens=1500
+                )
+        
+            if not response.choices:
+                raise ValueError("Empty response from OpenAI")
+            
+            return response.choices[0].message.content
+        
+        except Exception as e:
+            print(f"OpenAI API error: {str(e)}")  # Debug log
+        raise
 
     def _reset_state(self):
         """Reset all interview state variables"""
