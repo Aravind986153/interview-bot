@@ -1,9 +1,17 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse
-import uvicorn
+from fastapi.middleware.cors import CORSMiddleware
 import logging
 
 app = FastAPI()
+
+# CORS Configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://interview-cbot.netlify.app"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -11,28 +19,14 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_text()
-            await websocket.send_text(f"Server received: {data}")
+            await websocket.send_text(f"ACK: {data}")
     except WebSocketDisconnect:
         logging.info("Client disconnected")
 
 @app.get("/")
-async def root():
-    return HTMLResponse("""
-    <html>
-        <head><title>WebSocket Test</title></head>
-        <body>
-            <h1>WebSocket Endpoint</h1>
-            <p>Connect to: <code>wss://your-service.onrender.com/ws</code></p>
-        </body>
-    </html>
-    """)
+async def health_check():
+    return {"status": "ready", "ws_endpoint": "wss://interview-backend-6zq9.onrender.com/ws"}
 
 if __name__ == "__main__":
-    uvicorn.run(
-        app,
-        host="0.0.0.0",
-        port=8000,
-        ws="websockets",
-        ws_ping_interval=20,
-        ws_ping_timeout=20
-    )
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000, ws="websockets")
