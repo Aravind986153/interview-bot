@@ -33,13 +33,6 @@ class InterviewApp {
             this.showLoading("Connecting to server...");
             this.connectWebSocket();  // This will create the SINGLE connection
         }, 500);
-
-        this.keepAliveInterval = setInterval(() => {
-            if (this.ws?.readyState === WebSocket.OPEN) {
-                this.ws.send('PING');
-            }
-        }, 30000);
-
     }
 
     initParticles() {
@@ -351,11 +344,6 @@ class InterviewApp {
             return;
         }
 
-        if (data === 'PONG') {
-            this.lastPong = Date.now();
-            return;
-        }
-
         if (data.startsWith("**Feedback**") || data.includes("Strengths:") || data.includes("Areas for Improvement:")) {
             this.addFeedbackMessage(data);
             return;
@@ -540,32 +528,27 @@ class InterviewApp {
     }
 
     updateProgressUI() {
-        // Calculate progress percentage
         let progress = 0;
-        if (this.totalQuestions > 0 && this.currentQuestionIndex > 0) {
+        if (this.totalQuestions > 0) {
             progress = Math.min(
                 (this.currentQuestionIndex / this.totalQuestions) * 100, 
                 100
             );
         }
-    
-        // Update progress bar and percentage
         this.elements.progressFill.style.width = `${progress}%`;
         this.elements.progressPercent.textContent = `${Math.round(progress)}%`;
-        
-        // Update score and question count displays
-        this.elements.scoreDisplay.textContent = `${this.score}/${this.totalQuestions * 3}`; // Assuming 3 points per question
-        this.elements.questionsCountDisplay.textContent = `${this.currentQuestionIndex}/${this.totalQuestions}`;
+        this.elements.scoreDisplay.textContent = `${this.score}/${this.totalQuestions}`;
         this.elements.totalQuestionsDisplay.textContent = this.totalQuestions;
-    
-        // Update button states
+        this.elements.questionsCountDisplay.textContent = `${this.currentQuestionIndex}/${this.totalQuestions}`;
         this.elements.restartBtn.style.display = this.interviewActive ? 'none' : 'block';
         this.elements.feedbackBtn.style.display = this.interviewCompleted ? 'block' : 'none';
-        
-        // Force UI update if needed
-        this.elements.progressFill.offsetHeight; // Trigger reflow
+        this.elements.restartBtn.style.pointerEvents = this.interviewActive ? 'none' : 'auto';
+        this.elements.restartBtn.style.opacity = this.interviewActive ? '0.6' : '1';
+        this.elements.feedbackBtn.style.pointerEvents = this.interviewCompleted ? 'auto' : 'none';
+        this.elements.feedbackBtn.style.opacity = this.interviewCompleted ? '1' : '0.6';
     }
 
+    // In your InterviewApp class
     async restartInterview() {
         if (this.isRestarting) {
             this.showToast("Restart already in progress", "warning");
@@ -625,10 +608,11 @@ class InterviewApp {
     }
 
     handleRestartComplete() {
-        this.addSystemMessage("Interview reset. Select a topic to begin a new interview.");
+        this.addSystemMessage("Ready for new interview");
         this.interviewActive = false;
         this.interviewCompleted = false;
         this.enableTopics();
+        this.resetRestartButton();
         this.updateProgressUI();
         this.hideLoading();
     }
