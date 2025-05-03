@@ -4,4 +4,4 @@ sqlmodel==0.0.14
 psycopg2-binary==2.9.9
 python-dotenv==1.0.0
 pydantic==1.10.13
-openai>=1.0.0  # Add this line
+openai>=1.0.0
