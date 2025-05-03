@@ -2,7 +2,7 @@ class InterviewApp {
     constructor() {
         this.initParticles();
         
-        this.ws = new WebSocket(WS_URL);
+        //this.ws = new WebSocket(WS_URL);
         this.currentTopic = null;
         this.currentQuestionIndex = 0;
         this.totalQuestions = 0;
@@ -28,7 +28,7 @@ class InterviewApp {
         
         setTimeout(() => {
             this.showLoading("Connecting to server...");
-            this.connectWebSocket();
+            this.connectWebSocket();  // This will create the SINGLE connection
         }, 500);
     }
 
@@ -281,9 +281,13 @@ class InterviewApp {
     connectWebSocket() {
         const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
+
         this.ws = new WebSocket(wsUrl);
 
-        this.ws.onopen = () => this.handleWsOpen();
+        this.ws.onopen = () => {
+        console.log("WebSocket connected, readyState:", this.ws.readyState);
+        this.handleWsOpen();
+        };
         this.ws.onmessage = (e) => this.handleWsMessage(e.data);
         this.ws.onclose = () => this.handleWsClose();
         this.ws.onerror = (e) => this.handleWsError(e);
