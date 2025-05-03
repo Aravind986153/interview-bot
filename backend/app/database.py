@@ -2,23 +2,41 @@ from sqlmodel import SQLModel, Field, create_engine, Session
 from datetime import datetime
 import logging
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# PostgreSQL configuration
 def get_database_url():
-    # Get from environment (Render provides this)
-    url = os.getenv("DATABASE_URL")
+    # Local development configuration
+    if os.getenv("LOCAL_DEVELOPMENT", "false").lower() == "true":
+        return "postgresql://postgres:postgres@localhost:5432/postgres"
+    
+    # Render production configuration
+    url = os.getenv("DATABASE_URL", "")
+    
     if not url:
         raise ValueError("DATABASE_URL environment variable not set")
     
-    # Fix for Render's connection string
+    # Fix connection string format if needed
     if url.startswith("postgres://"):
-        return url.replace("postgres://", "postgresql://", 1)
+        url = url.replace("postgres://", "postgresql://", 1)
+    
+    # For Render's specific connection string
+    if "dpg-d0apg9h5pdvs73c121jg-a" in url:
+        url = url.replace("-a.", "-a:5432/")
+    
     return url
 
-# Create engine
-engine = create_engine(get_database_url())
+# Create engine with connection pooling
+engine = create_engine(
+    get_database_url(),
+    pool_size=5,
+    max_overflow=10,
+    pool_pre_ping=True,
+    pool_recycle=300
+)
 
 class InterviewSession(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)

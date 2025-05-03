@@ -2,11 +2,13 @@ services:
   - type: web
     name: interview-backend
     runtime: python
-    buildCommand: pip install -e . && pip install -r requirements.txt
-    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
+    buildCommand: |
+      pip install -r requirements.txt
+    startCommand: |
+      python run.py
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
+        fromDatabase: postgresql://interviewuser:NGPa9l4AVqVtjGrpFfYI7ghVagL71hRg@dpg-d0apg9h5pdvs73c121jg-a/interviewdb_81hl
           name: interview-db
           property: connectionString
       - key: ALLOWED_ORIGINS
@@ -18,5 +20,5 @@ services:
 
 databases:
   - name: interview-db
-    databaseName: interviewdb
+    databaseName: interviewdb_81hl
     user: interviewuser
