@@ -3,10 +3,20 @@ services:
     name: interview-backend
     runtime: python
     buildCommand: |
-      pip install --upgrade pip
       pip install -r backend/app/requirements.txt
     startCommand: |
-      python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --ws websockets
+      python backend/app/main.py
     envVars:
       - key: PYTHONPATH
-        value: /opt/render/project/src
+        value: /opt/render/project/src/backend/app
+      - key: DATABASE_URL
+        fromDatabase:
+          name: interview-db
+          property: connectionString
+      - key: ALLOWED_ORIGINS
+        value: "*"
+      - key: FRONTEND_URL
+        value: "https://interview-cbot.netlify.app"
+
+databases:
+  - name: interview-db

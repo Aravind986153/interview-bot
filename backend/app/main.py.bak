@@ -1,79 +1,38 @@
-import os
-import sys
-from pathlib import Path
-
-# Add the backend/app directory to Python path
-app_dir = str(Path(__file__).parent.resolve())
-if app_dir not in sys.path:
-    sys.path.insert(0, app_dir)
-
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
-from interview_logic import InterviewBot
-from database import create_db
+from fastapi.responses import HTMLResponse
+import uvicorn
 import logging
-from dotenv import load_dotenv
-import asyncio
-
-load_dotenv()
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler()]
-)
-logger = logging.getLogger(__name__)
 
 app = FastAPI()
-
-# Initialize database on startup
-@app.on_event("startup")
-def startup_event():
-    try:
-        create_db()
-        logger.info("PostgreSQL database initialized")
-    except Exception as e:
-        logger.error(f"Database init failed: {e}")
-
-# CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=os.getenv("ALLOWED_ORIGINS", "*").split(","),
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    logger.info("WebSocket connection established")
-    bot = None
     try:
-        bot = InterviewBot()
         while True:
-            try:
-                data = await asyncio.wait_for(websocket.receive_text(), timeout=30)
-                response = await bot.generate_response(data)
-                await websocket.send_text(response)
-            except asyncio.TimeoutError:
-                await websocket.send_json({"type": "ping"})
-                continue
-            except WebSocketDisconnect:
-                logger.info("Client disconnected")
-                break
-    except Exception as e:
-        logger.error(f"Error: {e}")
-    finally:
-        if bot:
-            await bot.close()
+            data = await websocket.receive_text()
+            await websocket.send_text(f"Server received: {data}")
+    except WebSocketDisconnect:
+        logging.info("Client disconnected")
 
 @app.get("/")
 async def root():
-    return RedirectResponse(url=os.getenv("FRONTEND_URL", "https://interview-cbot.netlify.app"))
+    return HTMLResponse("""
+    <html>
+        <head><title>WebSocket Test</title></head>
+        <body>
+            <h1>WebSocket Endpoint</h1>
+            <p>Connect to: <code>wss://your-service.onrender.com/ws</code></p>
+        </body>
+    </html>
+    """)
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=8000,
+        ws="websockets",
+        ws_ping_interval=20,
+        ws_ping_timeout=20
+    )
