@@ -144,6 +144,17 @@ class InterviewApp {
             totalQuestionsDisplay: document.getElementById('total-questions'),
             questionsCountDisplay: document.getElementById('questions-count')
         };
+
+        if (!this.elements.connectionStatus || !this.elements.statusDot) {
+            console.error("Critical UI elements missing!");
+            // Create fallback elements if needed
+            const statusDiv = document.createElement('div');
+            statusDiv.id = 'connection-status';
+            statusDiv.innerHTML = '<span class="status-dot"></span><span>Connection</span>';
+            document.body.prepend(statusDiv);
+            this.elements.connectionStatus = statusDiv;
+            this.elements.statusDot = statusDiv.querySelector('.status-dot');
+        }
     }
 
     initEventListeners() {
@@ -279,26 +290,49 @@ class InterviewApp {
     }
 
     connectWebSocket() {
-        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
-
-        this.ws = new WebSocket(wsUrl);
-
+        // Close any existing connection
+        if (this.ws) {
+            this.ws.close();
+        }
+    
+        this.updateConnectionStatus('connecting');
+        
+        // Create new connection with debug logging
+        this.ws = new WebSocket(WS_URL);
+        console.log("WebSocket created, readyState:", this.ws.readyState); // Should be 0 (CONNECTING)
+    
         this.ws.onopen = () => {
-        console.log("WebSocket connected, readyState:", this.ws.readyState);
-        this.handleWsOpen();
+            console.log("WebSocket OPEN, readyState:", this.ws.readyState); // Should be 1 (OPEN)
+            this.handleWsOpen();
         };
-        this.ws.onmessage = (e) => this.handleWsMessage(e.data);
-        this.ws.onclose = () => this.handleWsClose();
-        this.ws.onerror = (e) => this.handleWsError(e);
+    
+        this.ws.onerror = (error) => {
+            console.error("WebSocket ERROR:", error);
+            this.handleWsError(error);
+        };
+    
+        this.ws.onclose = () => {
+            console.log("WebSocket CLOSED");
+            this.handleWsClose();
+        };
+    
+        this.ws.onmessage = (e) => {
+            console.log("WebSocket MESSAGE:", e.data);
+            this.handleWsMessage(e.data);
+        };
     }
 
     handleWsOpen() {
-        this.showLoading("Connection successful!");
-        setTimeout(() => this.hideLoading(), 1000);
+        console.log("Connection opened, updating UI...");
         this.updateConnectionStatus('connected');
         this.addSystemMessage("Connected to AI Interview Coach!");
         this.enableTopics();
+        this.hideLoading();
+        
+        // Force UI redraw if needed
+        this.elements.connectionStatus.style.display = 'none';
+        this.elements.connectionStatus.offsetHeight; // Trigger reflow
+        this.elements.connectionStatus.style.display = 'block';
     }
 
     handleWsMessage(data) {
@@ -375,10 +409,9 @@ class InterviewApp {
     }
 
     handleWsError(error) {
-        this.showLoading("Connection failed. Retrying...");
+        console.error("Connection error:", error);
         this.updateConnectionStatus('error');
         this.addSystemMessage("Connection error. Please refresh.");
-        console.error("WebSocket error:", error);
         setTimeout(() => this.connectWebSocket(), 3000);
     }
 
