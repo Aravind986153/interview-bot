@@ -3,9 +3,10 @@ services:
     name: interview-backend
     runtime: python
     buildCommand: |
+      pip install --upgrade pip
       pip install -r backend/app/requirements.txt
     startCommand: |
-      uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --ws websockets --ws-ping-interval 20
+      python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --ws websockets
     envVars:
       - key: PYTHONPATH
         value: /opt/render/project/src

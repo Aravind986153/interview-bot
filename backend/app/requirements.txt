@@ -7,3 +7,4 @@ sqlmodel==0.0.14
 psycopg2-binary==2.9.9
 websockets==10.4
 websockets==10.4
+websockets==10.4
