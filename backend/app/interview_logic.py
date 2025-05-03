@@ -159,7 +159,7 @@ class InterviewBot:
             return "An error occurred. Please try again."
 
     async def _handle_restart(self) -> str:
-        """Reset the interview state"""
+        """Reset the interview state and confirm restart"""
         self._reset_state()
         return "Interview restarted! Choose a topic: python, system_architecture, ai, general_knowledge"
 

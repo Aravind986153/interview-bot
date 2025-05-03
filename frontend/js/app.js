@@ -33,6 +33,13 @@ class InterviewApp {
             this.showLoading("Connecting to server...");
             this.connectWebSocket();  // This will create the SINGLE connection
         }, 500);
+
+        this.keepAliveInterval = setInterval(() => {
+            if (this.ws?.readyState === WebSocket.OPEN) {
+                this.ws.send('PING');
+            }
+        }, 30000);
+
     }
 
     initParticles() {
@@ -340,6 +347,12 @@ class InterviewApp {
 
     handleWsMessage(data) {
         if (data === "RESTART_COMPLETE") {
+            this.handleRestartComplete();
+            return;
+        }
+
+        if (data === 'PONG') {
+            this.lastPong = Date.now();
             return;
         }
 
@@ -496,8 +509,12 @@ class InterviewApp {
             btn.disabled = false;
             btn.classList.remove('disabled');
             btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
             btn.style.pointerEvents = 'auto';
         });
+        
+        // Ensure the topic selection section is fully interactive
+        document.querySelector('.topic-selection').style.pointerEvents = 'auto';
     }
 
     handleScoreUpdate(message) {
@@ -523,110 +540,96 @@ class InterviewApp {
     }
 
     updateProgressUI() {
+        // Calculate progress percentage
         let progress = 0;
-        if (this.totalQuestions > 0) {
+        if (this.totalQuestions > 0 && this.currentQuestionIndex > 0) {
             progress = Math.min(
                 (this.currentQuestionIndex / this.totalQuestions) * 100, 
                 100
             );
         }
+    
+        // Update progress bar and percentage
         this.elements.progressFill.style.width = `${progress}%`;
         this.elements.progressPercent.textContent = `${Math.round(progress)}%`;
-        this.elements.scoreDisplay.textContent = `${this.score}/${this.totalQuestions}`;
-        this.elements.totalQuestionsDisplay.textContent = this.totalQuestions;
+        
+        // Update score and question count displays
+        this.elements.scoreDisplay.textContent = `${this.score}/${this.totalQuestions * 3}`; // Assuming 3 points per question
         this.elements.questionsCountDisplay.textContent = `${this.currentQuestionIndex}/${this.totalQuestions}`;
+        this.elements.totalQuestionsDisplay.textContent = this.totalQuestions;
+    
+        // Update button states
         this.elements.restartBtn.style.display = this.interviewActive ? 'none' : 'block';
         this.elements.feedbackBtn.style.display = this.interviewCompleted ? 'block' : 'none';
-        this.elements.restartBtn.style.pointerEvents = this.interviewActive ? 'none' : 'auto';
-        this.elements.restartBtn.style.opacity = this.interviewActive ? '0.6' : '1';
-        this.elements.feedbackBtn.style.pointerEvents = this.interviewCompleted ? 'auto' : 'none';
-        this.elements.feedbackBtn.style.opacity = this.interviewCompleted ? '1' : '0.6';
+        
+        // Force UI update if needed
+        this.elements.progressFill.offsetHeight; // Trigger reflow
     }
 
-    // In your InterviewApp class
     async restartInterview() {
-    if (this.isRestarting) {
-        this.showToast("Restart already in progress", "warning");
-        return;
-    }
-
-    this.isRestarting = true;
-    const restartBtn = this.elements.restartBtn;
-    const originalText = restartBtn.textContent;
+        if (this.isRestarting) {
+            this.showToast("Restart already in progress", "warning");
+            return;
+        }
     
-    // Visual feedback
-    restartBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Restarting...';
-    this.showLoading("Resetting interview...");
-
-    try {
-        // Clear local state
-        this.currentTopic = null;
-        this.currentQuestionIndex = 0;
-        this.score = 0;
-        this.interviewActive = false;
-        this.interviewCompleted = false;
+        this.isRestarting = true;
+        const restartBtn = this.elements.restartBtn;
+        const originalText = restartBtn.innerHTML;
         
-        // Send restart command and wait for confirmation
-        const restartConfirmed = await new Promise((resolve) => {
-            const timeout = setTimeout(() => {
-                this.showToast("Restart taking longer than expected", "warning");
-                resolve(false);
-            }, 5000); // 5 second timeout
-            
-            // Temporary message handler
-            const tempHandler = (e) => {
-                if (e.data === "RESTART_COMPLETE") {
-                    this.ws.removeEventListener('message', tempHandler);
-                    clearTimeout(timeout);
-                    resolve(true);
-                }
-            };
-            
-            this.ws.addEventListener('message', tempHandler);
-            this.ws.send("RESTART");
-        });
-
-        if (!restartConfirmed) {
-            throw new Error("Restart confirmation not received");
+        // Visual feedback
+        restartBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Restarting...';
+        this.showLoading("Resetting interview...");
+    
+        try {
+            // Clear chat but keep welcome message
+            this.elements.chatMessages.innerHTML = `
+                <div class="welcome-message">
+                    <div class="welcome-content">
+                        <h2>Interview Reset</h2>
+                        <p>Select a topic below to begin a new interview.</p>
+                    </div>
+                </div>`;
+    
+            // Reset all interview states
+            this.currentTopic = null;
+            this.currentQuestionIndex = 0;
+            this.score = 0;
+            this.totalQuestions = 0;
+            this.interviewActive = false;
+            this.interviewCompleted = false;
+            this.questionsAsked = 0;
+    
+            // Update UI to reflect reset state
+            this.updateProgressUI();
+            this.enableTopics();
+    
+            // Send restart command to backend
+            const success = this.sendWsMessage("RESTART");
+            if (!success) {
+                throw new Error("Failed to send restart command");
+            }
+    
+            this.showToast("Interview reset successfully", "success");
+        } catch (error) {
+            console.error("Restart failed:", error);
+            this.showToast("Restart failed - please try again", "error");
+            // Attempt to reconnect if needed
+            if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+                this.connectWebSocket();
+            }
+        } finally {
+            restartBtn.innerHTML = originalText;
+            this.isRestarting = false;
+            this.hideLoading();
         }
-
-        // Reset UI
-        this.elements.chatMessages.innerHTML = `
-            <div class="welcome-message">
-                <div class="welcome-content">
-                    <h2>Interview Reset</h2>
-                    <p>Select a topic below to begin a new interview.</p>
-                </div>
-            </div>`;
-        
-        this.enableTopics();
-        this.updateProgressUI();
-        this.showToast("Interview reset successfully", "success");
-        
-    } catch (error) {
-        console.error("Restart failed:", error);
-        this.showToast("Restart failed - please refresh", "error");
-    } finally {
-        this.resetRestartButton();
-        this.hideLoading();
     }
-
-    if (!restartConfirmed) {
-        this.restartRetries++;
-        if (this.restartRetries < this.maxRestartRetries) {
-            this.showToast(`Retrying restart (${this.restartRetries}/${this.maxRestartRetries})`, "warning");
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            return this.restartInterview();
-        }
-        throw new Error("Max retries reached");
-    }
-}
 
     handleRestartComplete() {
-        this.addSystemMessage("Ready for new interview");
+        this.addSystemMessage("Interview reset. Select a topic to begin a new interview.");
         this.interviewActive = false;
+        this.interviewCompleted = false;
         this.enableTopics();
-        this.resetRestartButton();
+        this.updateProgressUI();
         this.hideLoading();
     }
 
