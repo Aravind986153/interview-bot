@@ -1,10 +1,18 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends
+import os
+import sys
+from pathlib import Path
+
+# Add the backend/app directory to Python path
+app_dir = str(Path(__file__).parent.resolve())
+if app_dir not in sys.path:
+    sys.path.insert(0, app_dir)
+
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
-from database import create_db  # Changed from database
-from interview_logic import InterviewBot  # Changed if it was relative
+from interview_logic import InterviewBot
+from database import create_db
 import logging
-import os
 from dotenv import load_dotenv
 import asyncio
 

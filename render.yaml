@@ -3,16 +3,14 @@ services:
     name: interview-backend
     runtime: python
     buildCommand: |
-      pip install -e backend/
       pip install -r backend/app/requirements.txt
     startCommand: |
-      python backend/app/main.py
-      python backend/app/main.py
+      export PYTHONPATH=/opt/render/project/src/backend/app && python backend/app/main.py
     envVars:
       - key: PYTHONPATH
-        value: /opt/render/project/src
+        value: /opt/render/project/src/backend/app
       - key: DATABASE_URL
-        fromDatabase:postgresql://interviewuser:NGPa9l4AVqVtjGrpFfYI7ghVagL71hRg@dpg-d0apg9h5pdvs73c121jg-a/interviewdb_81hl
+        fromDatabase:
           name: interview-db
           property: connectionString
       - key: ALLOWED_ORIGINS
