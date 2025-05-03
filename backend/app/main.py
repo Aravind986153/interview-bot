@@ -62,6 +62,10 @@ async def root():
 # WebSocket endpoint
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        await websocket.close(code=1008, reason="Server missing API configuration")
+        return
     await websocket.accept()
     logger.info("WebSocket connection established")
     bot = None
